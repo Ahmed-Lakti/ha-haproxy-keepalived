@@ -1,0 +1,9 @@
+# Secrets et fichiers locaux
+.env
+*.pem
+*.key
+# Fichiers générés
+keepalived.conf
+*.log
+*.swp
+.DS_Store

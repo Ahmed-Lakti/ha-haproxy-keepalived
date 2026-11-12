@@ -1,0 +1,75 @@
+# Architecture HA : 2 HAProxy (Keepalived/VRRP, IP virtuelle) + 3 serveurs web
+name: ha-lab
+
+x-lb: &lb
+  build: ./lb
+  restart: unless-stopped
+  cap_add: [NET_ADMIN, NET_BROADCAST, NET_RAW]
+  depends_on: [web1, web2, web3]
+
+x-web: &web
+  build: ./web
+  restart: unless-stopped
+
+services:
+  lb1:
+    <<: *lb
+    container_name: lb1
+    hostname: lb1
+    environment:
+      STATE: MASTER
+      PRIORITY: "110"
+      SRC_IP: 172.28.0.11
+      PEER_IP: 172.28.0.12
+      VIP: 172.28.0.100
+      AUTH_PASS: ${VRRP_PASS:-ChangeMe1}
+    ports: ["8081:8404"]          # page de stats de lb1
+    networks:
+      ha_net: { ipv4_address: 172.28.0.11 }
+
+  lb2:
+    <<: *lb
+    container_name: lb2
+    hostname: lb2
+    environment:
+      STATE: BACKUP
+      PRIORITY: "100"
+      SRC_IP: 172.28.0.12
+      PEER_IP: 172.28.0.11
+      VIP: 172.28.0.100
+      AUTH_PASS: ${VRRP_PASS:-ChangeMe1}
+    ports: ["8082:8404"]          # page de stats de lb2
+    networks:
+      ha_net: { ipv4_address: 172.28.0.12 }
+
+  web1:
+    <<: *web
+    container_name: web1
+    hostname: web1
+    networks:
+      ha_net: { ipv4_address: 172.28.0.21 }
+  web2:
+    <<: *web
+    container_name: web2
+    hostname: web2
+    networks:
+      ha_net: { ipv4_address: 172.28.0.22 }
+  web3:
+    <<: *web
+    container_name: web3
+    hostname: web3
+    networks:
+      ha_net: { ipv4_address: 172.28.0.23 }
+
+  client:                          # conteneur de test (curl)
+    image: docker.io/library/alpine:3.20
+    container_name: client
+    command: sh -c "apk add --no-cache curl >/dev/null && sleep infinity"
+    networks:
+      ha_net: { ipv4_address: 172.28.0.50 }
+
+networks:
+  ha_net:
+    driver: bridge
+    ipam:
+      config: [{ subnet: 172.28.0.0/24 }]

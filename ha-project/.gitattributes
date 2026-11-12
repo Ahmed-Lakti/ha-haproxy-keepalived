@@ -1,0 +1,6 @@
+# Évite que des fins de ligne Windows (CRLF) cassent les scripts dans les conteneurs
+* text=auto
+*.sh text eol=lf
+*.tpl text eol=lf
+*.cfg text eol=lf
+Dockerfile text eol=lf
